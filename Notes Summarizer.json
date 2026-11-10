@@ -1,0 +1,278 @@
+{
+  "name": "Notes Summarizer",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Notes Summarizer",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Notes ",
+              "fieldType": "file",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Email",
+              "fieldType": "email",
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.6,
+      "position": [
+        0,
+        0
+      ],
+      "id": "815588f7-f40a-4c2e-9ef0-a903361c3669",
+      "name": "On form submission",
+      "webhookId": "c33658ef-c188-4623-9b84-c5a60e39ab9d"
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "binaryPropertyName": "Notes_",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.2,
+      "position": [
+        224,
+        0
+      ],
+      "id": "cb5837ae-aa2d-489a-a369-0a203df0a2a0",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Summarize these lecture notes into key points a student can revise in 5 minutes. Notes: {{ $json.text }}.\n\nWrite all math in plain text using Unicode symbols. Do NOT use LaTeX,\ndollar signs, backslashes, or curly braces. Use τ, μ, ρ, ν, γ, ×, ≈, →,\nsuperscripts like m³ and 10⁻⁶, and write fractions as (a)/(b).\nExample: ρ = m/V = 0.3534 kg / 0.000355 m³ ≈ 995.5 kg/m³",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        496,
+        0
+      ],
+      "id": "9fe2d0b8-6fd8-4dcc-842b-b7d101ff5273",
+      "name": "Summarize Notes"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Create 10 practice questions with answers from these notes. Mix conceptual and calculation questions. Notes:{{ $('Extract from File').item.json.text }}\n\nWrite all math in plain text using Unicode symbols. Do NOT use LaTeX,\ndollar signs, backslashes, or curly braces. Use τ, μ, ρ, ν, γ, ×, ≈, →,\nsuperscripts like m³ and 10⁻⁶, and write fractions as (a)/(b).\nExample: ρ = m/V = 0.3534 kg / 0.000355 m³ ≈ 995.5 kg/m³",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        848,
+        0
+      ],
+      "id": "1fd3bae8-16c8-4bf1-872a-7bd312cb5905",
+      "name": "Generate Quiz"
+    },
+    {
+      "parameters": {
+        "jsCode": "const summary = $('Summarize Notes').first().json.text;\nconst quiz = $('Generate Quiz').first().json.text;\nconst email = $('On form submission').first().json.Email;\n\nreturn [{\n  json: {\n    email,\n    message: `STUDY SUMMARY\\n\\n${summary}\\n\\n-----\\n\\nPRACTICE QUIZ\\n\\n${quiz}`\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1184,
+        0
+      ],
+      "id": "f82f94ba-da73-497d-8bd3-dfaf7c7d3a7a",
+      "name": "Combine Summary + Quiz "
+    },
+    {
+      "parameters": {
+        "mode": "markdownToHtml",
+        "markdown": "={{ $json.message }}",
+        "destinationKey": "html",
+        "options": {
+          "simpleLineBreaks": true,
+          "tablesHeaderId": true
+        }
+      },
+      "type": "n8n-nodes-base.markdown",
+      "typeVersion": 1,
+      "position": [
+        1408,
+        0
+      ],
+      "id": "a67d4f72-4a72-4d0e-8620-bbb8b8f6b3b2",
+      "name": "Convert to HTML"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Combine Summary + Quiz ').item.json.email }}",
+        "subject": "Your Study Summary and Quiz",
+        "message": "={{ $json.html }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1632,
+        0
+      ],
+      "id": "65ea901a-4630-4fd8-8713-5af36c0c1904",
+      "name": "Email to Student",
+      "webhookId": "d152879c-b18c-4def-a93f-e44e60fc7a18",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "SlH0XkXg5NtMQh3E",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        400,
+        144
+      ],
+      "id": "715d1ebf-68cb-4d0c-8c55-2669bcc198ef",
+      "name": "Gemini(Summary)",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "EbSgdoaRmpkC9QR2",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        752,
+        144
+      ],
+      "id": "cd91e49b-3d15-40a5-9a66-191fd9f97280",
+      "name": "Gemini(Quiz)",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "EbSgdoaRmpkC9QR2",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Summarize Notes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarize Notes": {
+      "main": [
+        [
+          {
+            "node": "Generate Quiz",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Quiz": {
+      "main": [
+        [
+          {
+            "node": "Combine Summary + Quiz ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Combine Summary + Quiz ": {
+      "main": [
+        [
+          {
+            "node": "Convert to HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to HTML": {
+      "main": [
+        [
+          {
+            "node": "Email to Student",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini(Summary)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Summarize Notes",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini(Quiz)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Generate Quiz",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "da47db69-560d-4aa4-9b18-214dc91b7766",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "fae0fa7c6219866f04be9901ce4a745264257b6f4071e0183263d69cf3b9e4cc"
+  },
+  "nodeGroups": [],
+  "id": "nU6xxSdoL1UscLwk",
+  "tags": []
+}
